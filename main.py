@@ -1,3 +1,4 @@
+from cProfile import label
 import cv2
 from matplotlib.image import imread
 import numpy as np
@@ -26,6 +27,7 @@ def getImages(path, species):
 
 def printImages(images, labels):
     "Function that print images"
+    print('Printing images...')
     for i in range(len(images)):
         for j in range(len(images[i])):
             plt.imshow(images[i][j])
@@ -63,19 +65,30 @@ def bird_classification(imagesTrain, labelsTrain, imagesTest, labelsTest, images
 
 def grabCutImages(images, labels):
     "Function that apply grabcut to images"
+    print('Applying grabcut...')
     imagesGrabcut = []
     for i in range(len(images)):
-        for j in range(len(images[i])):
+        print('Applying grabcut to class: ' + labels[i])
+        for j in t.tqdm(range(len(images[i]))):
             img = images[i][j]
-            mask = np.zeros(img.shape[:2], np.uint8)
-            bgdModel = np.zeros((1,65), np.float64)
-            fgdModel = np.zeros((1,65), np.float64)
-            rect = (50,50,450,290)
-            cv2.grabCut(img, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
-            mask2 = np.where((mask==2)|(mask==0), 0, 1).astype('uint8')
-            img = img*mask2[:,:,np.newaxis]
+            mask = np.zeros(img.shape[:2],np.uint8)
+            bgdModel = np.zeros((1,65),np.float64)
+            fgdModel = np.zeros((1,65),np.float64)
+            rect = (15,10,215,215)
+            cv2.grabCut(img,mask,rect,bgdModel,fgdModel,6,cv2.GC_INIT_WITH_RECT)
+            mask = np.where((mask==2)|(mask==0),0,1).astype('uint8')
+            img = img*mask[:,:,np.newaxis]
             imagesGrabcut.append(img)
-    return imagesGrabcut
+    return [imagesGrabcut], labels
+
+def writeImages(images, labels, path):
+    "Function that write images"
+    print('Writing images...')
+    for i in range(len(images)):
+        for j in range(len(images[i])):
+            if not os.path.exists(path + labels[i]):
+                os.makedirs(path + labels[i])
+            cv2.imwrite(path + labels[i] + '/' + str('%03d'%(j+1)) + '.jpg', images[i][j])
 
 def main():
     "Bird Classification"
@@ -87,8 +100,8 @@ def main():
     imagesTrain, labelsTrain = getImages(pathTrain, train)
     # imagesTest, labelsTest = getImages(pathTest, test)
     # imagesValid, labelsValid = getImages(pathValid, test)
-    imagesGrabcut = grabCutImages(imagesTrain, labelsTrain)
-    printImages(imagesGrabcut, labelsTrain)
+    imagesGrabcut, labelGrabcut = grabCutImages(imagesTrain, labelsTrain)
+    writeImages(imagesGrabcut, labelGrabcut, './archive/grabcut/train/')
 
 if __name__ == '__main__':
     main()
